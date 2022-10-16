@@ -1,0 +1,45 @@
+.outterContainer {
+  align-content: 'stretch';
+  width: 100%;
+}
+
+.leftColumn {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.rightColumn {
+  padding: 10px;;
+  flex-direction: row;
+  height: 1px;
+  overflow: visible;
+}
+
+.instructionMessage{
+  padding:10px;
+  margin:auto;
+  text-align: center;
+  color: gray;
+  vertical-align: middle;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.warehouseItemsTable, .truckItemsTable {
+  width: 100%;
+}
+
+.warehouseItemsTable tbody tr td, .truckItemsTable tbody tr td{
+  border-bottom: 1px solid lightgrey;
+  color: #336699;
+  font-size: 11px;
+}
+
+.truckControls {
+  display: block;
+  background-color: #def;
+  border-bottom: 1px solid #336699;
+  padding: 5px;
+}
+

@@ -1,0 +1,74 @@
+.listaProjetoItemClass table tbody tr td span {
+  font-weight: bold;
+  font-size: 10px;
+}
+
+.listaProjetoItemClass table {
+  width: 100%;
+  border-bottom: 1px solid lightgray;
+  // border-radius: 10px;
+  padding: 0px;
+  margin: 2px;
+}
+
+.listaProjetoItemClass table:hover {
+  background-color: #eee;
+}
+
+.listaProjetoItemClass {
+  width: 100%;
+}
+
+.listaProjetoItemClass tbody,
+.listaProjetoItemClass td {
+  padding: 0px;
+  margin: 0px;
+  border: 0px;
+}
+
+.listaProjetoItemClass table tbody tr td {
+  padding: 3px;
+  margin: 0px;
+  border-bottom: 0px;
+  border-right: 0px;
+  font-size: 11px;
+}
+
+.listaProjetoItemClass table tr {
+  border: 0px;
+  margin: 0px;
+  border: 0px;
+  padding: 0px;
+}
+
+.listaProjetoItemClass table tbody tr td button {
+  width: 100%;
+}
+
+.listaProjetoItemClass .StatusVerde {
+  color: green;
+}
+
+.listaProjetoItemClass .StatusVermelho {
+  color: red;
+}
+
+.listaProjetoItemClass .StatusAmarelo {
+  color: orange;
+}
+
+.listaProjetoItemClass .statusCelula {
+  width: 60px;
+}
+
+.listaProjetoItemClass table tbody tr td a {
+  color: #36f;
+  text-decoration: none;
+  background: none;
+  border-radius: 5px;
+  padding: 3px;
+}
+
+.listaProjetoItemClass table tbody tr td a:hover {
+  text-decoration: underline;
+}
