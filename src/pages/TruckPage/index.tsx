@@ -1,10 +1,16 @@
+// import {} as google from 'googlemaps';
+
 import style from './truckpage.module.scss';
 
 import {
    useEffect, useRef, useState,
 } from 'react';
+
+import GoogleMapReact from 'google-map-react';
 import LoadingBar, { LoadingBarRef } from 'react-top-loading-bar';
 import { AxiosResponse } from 'axios';
+
+
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
 import { Navigator } from '../../components/Navigator';
@@ -97,6 +103,30 @@ export function TruckPage() {
     event.preventDefault();
   } 
 
+  const handleApiLoaded = (map: any, maps: any) => {
+    console.log(map)
+    console.log(maps)
+
+    var myLatlng = new google.maps.LatLng(-25.363882,131.044922);
+   
+    // var map = new google.maps.Map(document.getElementById("map"), mapOptions);
+
+    var marker = new google.maps.Marker({
+        position: myLatlng,
+        title:"Hello World!"
+    });
+
+    // To add the marker to the map, call setMap();
+    marker.setMap(map);
+
+    //getDirections
+    const response: Promise<AxiosResponse<any, any>> = api.get('location/route/get', {} );
+    
+    response.then((resolved) => {
+      console.log(resolved.data);
+    });
+  }
+
   return (
     <div>
       <LoadingBar color="#f11946" ref={ref} />
@@ -165,6 +195,28 @@ export function TruckPage() {
                       </tbody>
                     </table>
               }              
+            </div>
+          </div>
+          <div className={style.outterContainer}>
+            <div style={{ height: '400px', width: '100', borderTop: '1px solid black' }}>
+              <GoogleMapReact
+                bootstrapURLKeys={{ key: "AIzaSyBo_zEIJkX992SDpVrD4CRkk74ljIXUw7E" }}
+                // defaultCenter={defaultProps.center}
+                // defaultZoom={defaultProps.zoom}
+                yesIWantToUseGoogleMapApiInternals
+                defaultCenter={{
+                  lat:-25.363882, lng: 131.044922
+                }}
+                defaultZoom={1}
+                zoom={5}
+                onGoogleApiLoaded={({ map, maps }) => handleApiLoaded(map, maps)}
+              >
+                {/* <AnyReactComponent
+                  lat={59.955413}
+                  lng={30.337844}
+                  text="My Marker"
+                /> */}
+              </GoogleMapReact>
             </div>
           </div>
         </form>
