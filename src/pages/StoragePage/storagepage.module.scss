@@ -1,3 +1,38 @@
-#f_mae {
-  width: 200px;
+.outterContainer {
+  align-content: 'stretch';
+  width: 100%;
+}
+
+.instructionMessage{
+  padding:10px;
+  margin:auto;
+  text-align: center;
+  color: gray;
+  vertical-align: middle;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.warehouseItemsTable, .truckItemsTable {
+  width: 100%;
+}
+
+.warehouseItemsTable tbody tr td, .truckItemsTable tbody tr td{
+  border-bottom: 1px solid lightgrey;
+  color: #336699;
+  font-size: 11px;
+}
+
+.warehouseItemsTable tbody tr td span, .truckItemsTable tbody tr td span{
+  display:block
+}
+.tableHeader {
+  background-color: #def;
+  border-bottom: 1px solid #336699;
+}
+
+.tableHeader th{
+  padding: 4px;
+  font-size: 12px;
+  text-align: left;
 }

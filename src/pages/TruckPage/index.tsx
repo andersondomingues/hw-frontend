@@ -31,7 +31,7 @@ export function TruckPage() {
   const [warehouseItems, setWarehouseItems] = useState<WarehouseItem[]>([]);
   const [truckItems, setTruckItems] = useState<WarehouseItem[]>([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>(WAREHOUSE_OPTION_PLACEHOLDER);
-
+  const MAX_TRUCK_ITEMS = 10;
   const ref = useRef<LoadingBarRef>(null);
 
   useEffect(() => {
@@ -95,7 +95,11 @@ export function TruckPage() {
   const addToTruck = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, x: WarehouseItem) => {
 
     if(!truckItems.find(a => a == x)){
-      setTruckItems([...truckItems, x]);
+      // if(truckItems.length == MAX_TRUCK_ITEMS){
+      //   alert(`Maximum truck load is ${MAX_TRUCK_ITEMS} items.`);
+      // } else {
+        setTruckItems([...truckItems, x]);
+      // }
     } else {
       alert("Select item has been added to the truck already");
     }
@@ -198,9 +202,27 @@ export function TruckPage() {
             </div>
           </div>
           <div className={style.outterContainer}>
+            <h1>Select Destinations</h1>
+            { (truckItems.length == 0) 
+                  ? <div className={style.instructionMessage}>Items added to the truck will appear here.</div>
+                  : <table className={style.truckItemsTable}>
+                      <tbody>
+                      { truckItems.map((x, index) => (
+                        <tr>
+                          <td><b>#{x.id}</b>&nbsp;{x.description}</td>
+                          <td style={{width:'10px'}}>
+                            <button onClick={(event) => removeFromTruck(event, x)}>x</button>
+                          </td>
+                        </tr>
+                      ))}
+                      </tbody>
+                    </table>
+              }     
+          </div>
+          <div className={style.outterContainer}>
             <div style={{ height: '400px', width: '100', borderTop: '1px solid black' }}>
               <GoogleMapReact
-                bootstrapURLKeys={{ key: "AIzaSyBo_zEIJkX992SDpVrD4CRkk74ljIXUw7E" }}
+                bootstrapURLKeys={{ key: String(process.env.REACT_APP_API_GOOGLE_KEY) }}
                 // defaultCenter={defaultProps.center}
                 // defaultZoom={defaultProps.zoom}
                 yesIWantToUseGoogleMapApiInternals

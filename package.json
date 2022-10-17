@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "@types/cors": "^2.8.12",
+    "@types/dotenv": "^8.2.0",
     "@types/googlemaps": "^3.43.3",
     "axios": "^0.26.1",
     "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
     "express": "^4.17.3",
     "google-map-react": "^2.2.0",
     "googlemaps": "^1.12.0",
