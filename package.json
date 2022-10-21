@@ -10,6 +10,7 @@
     "eject": "react-scripts eject"
   },
   "dependencies": {
+    "@googlemaps/polyline-codec": "^1.0.28",
     "@types/cors": "^2.8.12",
     "@types/dotenv": "^8.2.0",
     "@types/googlemaps": "^3.43.3",
