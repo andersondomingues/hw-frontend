@@ -9,7 +9,6 @@ import { Footer } from '../../components/Footer';
 import { Navigator } from '../../components/Navigator';
 import { FormPage } from '../../components/FormPage';
 import { api } from '../../services/api';
-import { STATUS_CODES } from 'http';
 
 interface WarehouseItem {
   id : number;
@@ -20,8 +19,9 @@ interface WarehouseItem {
 
 export function TruckPage() {
 
-  const WAREHOUSE_OPTION_PLACEHOLDER = '-- selected warehouse--';
-
+  const WAREHOUSE_OPTION_PLACEHOLDER = '-- select warehouse --';
+  const UNABLE_TO_GET_ROUTER_MESSAGE = "Could not find a route for the selected warehouses.\
+    Either the length of the route is too long or the number of warehouses exceed the limitation (10).";
   const MAP_CENTER_COORDINATES =  // center to US coodinates
     { lat: 34.6169114, lng: -106.3333745 }; 
 
@@ -34,10 +34,6 @@ export function TruckPage() {
   // item added to the truck
   const [truckItems, setTruckItems] = useState<WarehouseItem[]>([]);
 
-  // toggle displaying destination and map sections
-  const [displaySelectDestination, setDisplaySelectDestination] = useState<string>('none');
-  // const [displayMap, setDisplayMap] = useState<string>('none');
-
   // currently selected warehouse
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>(WAREHOUSE_OPTION_PLACEHOLDER);
 
@@ -47,14 +43,15 @@ export function TruckPage() {
   // ref object for the loading bar (upper border)
   const ref = useRef<LoadingBarRef>(null);
 
-  // polylines currently draw to the map
+  // polylines and markers currently applied to the map
   const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
+  const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
 
   // google map
   const [map, setMap] = useState<any>(null);
-  const [maps, setMaps] = useState<any>(null);
+  const [maps, setMaps] = useState<any>(null); // intentionally unused
 
-  // load locations at page startup
+  // load warehouse locations at page startup
   useEffect(() => {
     const getLocations = async () => {
       const data = {};
@@ -77,7 +74,9 @@ export function TruckPage() {
 
     if(truckItems.length == 0 || confirm(SWITCHING_WAREHOUSES_MESSAGE)){
       setTruckItems([])
+      setDestinations([])
       setSelectedWarehouse(event.target.value);
+      cleanMapDisplay();
       lookupItems(event.target.value);
     }    
   }
@@ -98,27 +97,20 @@ export function TruckPage() {
     }
   }
 
-  // advance to the select destinations block
-  const selectDestinationsClick = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-    event.preventDefault();
-    ref!.current!.continuousStart(0, 20);
-    setDisplaySelectDestination('block');
-    setDestinations([])
-    ref!.current!.complete();
-  }
-
   // remove all items from the truck
   const clearTruckClick = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-    ref!.current!.continuousStart(0, 200);
-    setTruckItems([]);
     event.preventDefault();
-    ref!.current!.complete();
+    if(confirm('Clearing the truck will reset any selected destination. Proceed clearing the truck?')){
+      setTruckItems([]);
+    }
   }
 
   // remove a single item from the truck
   const removeFromTruck = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, item: WarehouseItem) => {
     event.preventDefault();
-    setTruckItems(truckItems.filter((x) => x != item))
+    const index = truckItems.indexOf(item);
+    setTruckItems(truckItems.filter((x) => x != item));
+    setDestinations(destinations.filter((x) => destinations.indexOf(x) != index));
   }
 
   // add an item to the truck, avoiding duplicates
@@ -128,63 +120,85 @@ export function TruckPage() {
       setTruckItems([...truckItems, x]);
     } else {
       alert("Selected item has been added to the truck already");
-    }    
+    }
   }
 
   // confirm destinations and show map
-  const confirmDestinationClick  = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+  const calculateRouteClick = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     event.preventDefault();
-    // setDisplayMap('block');
-    displayRoute(selectedWarehouse, destinations);
+
+    // remove duplicated locations 
+    const filteredDestinations = destinations.filter((value, index, self) => {
+      return (self.indexOf(value) === index && value != selectedWarehouse);
+    });
+
+    // make sure that all items have destinations set.
+    if(filteredDestinations.indexOf(WAREHOUSE_OPTION_PLACEHOLDER) > -1)
+      return alert("You must select destinations to all items before proceeding.")
+
+    // google API do not calculate routes for more than 15 waypoints
+    try { 
+      displayRoute(selectedWarehouse, filteredDestinations);
+    } catch (e) { 
+      alert(UNABLE_TO_GET_ROUTER_MESSAGE);
+      console.log(e)
+    }
   }
 
-  // abort destination selection and go back to item selection
-  const backToItemSeletion  = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-    event.preventDefault();
-    // setDisplaySelectDestination('none');
-    ref!.current!.complete();
-  }
-
-  // display route
-  const displayRoute = (origin: string, destinations: string[]) => {
-    
+  const cleanMapDisplay = () => {
+        // remove markers and polylines
     // clear current polylines
     for(let i = 0; i < polylines.length; i++){
       const polyline: google.maps.Polyline = polylines[i];
       polyline.setMap(null);
     }
+    setPolylines([]);
 
-    // const marker = new google.maps.Marker({
-    //     position: centerCoordinates,
-    //     title:"Hello World!"
-    // });
+    // clear pins
+    for(let i = 0; i < markers.length; i++){
+      const marker: google.maps.Marker = markers[i];
+      marker.setMap(null);
+    }
+    setMarkers([]);
+  }
 
-    // // To add the marker to the map, call setMap();
-    // marker.setMap(map);
-
-
-    //getDirections
-    const response: Promise<AxiosResponse<any, any>> = api.post('location/route/get', {
-      origin, destinations
-    });
-
-    // draw waypoints
-    response.then((resolved) => {
+  // display route
+  const displayRoute = async (origin: string, destinations: string[]) => {
     
-      if(resolved.status != 200) // http ok
-        return alert('failed');
+    console.log({origin, destinations})
 
-      // get single calculated route
-      const route = resolved.data.routes[0];
+    cleanMapDisplay();
+
+    if(truckItems.length === 0)
+      return alert("Truck is empty! Add items to the truck to calculate a route.");
+
+    try { 
+      //getDirections
+      const response = await api.post('location/route/get', {
+        origin, 
+        destinations
+      });
+
+      if(response.status != 200) // http ok
+        return alert(UNABLE_TO_GET_ROUTER_MESSAGE);
+
+        // get single calculated route
+      const route = response.data.routes[0];
 
       // map bounds
       const bounds = new google.maps.LatLngBounds();
 
-      console.log(route.legs)
+      // new drawing items
+      const newPolylines : google.maps.Polyline[] = [];
+      const newMarkers : google.maps.Marker[] = [];
 
       // iterate leg points
-      for (let i = 0; i < route.legs.length; i++){
+      // the last leg correspond to the round trip path
+      for (let i = 0; i < route.legs.length -1; i++){
+        
+        // add polylines to map
         const steps = route.legs[i].steps;
+        
         for(let j = 0; j < steps.length; j++){         
           const points = steps[j].polyline.points;
           const polyline = new google.maps.Polyline({
@@ -194,15 +208,40 @@ export function TruckPage() {
             map: map
           });
 
-          setPolylines([...polylines, polyline]);
+          newPolylines.push(polyline);
 
-          for (let l = 0; l < polyline.getPath().getLength(); l++) {
+          // fix visible area of the map (focus in the whole path region)
+          for (let l = 0; l < polyline.getPath().getLength(); l++)
             bounds.extend(polyline.getPath().getAt(l));
-          }         
         }
-      } 
-      map.fitBounds(bounds);
-    });
+
+        // pin source path mark
+        const markerOrigin = new google.maps.Marker({
+          position: route.legs[i].start_location,
+          title: `Warehouse: ${route.legs[i].start_address}`
+        });
+
+        markerOrigin.setMap(map);
+        newMarkers.push(markerOrigin);    
+
+        // pin destination path mark
+        const markerDestination = new google.maps.Marker({
+          position: route.legs[i].end_location,
+          title: `Warehouse: ${route.legs[i].end_address}`
+        });
+
+        markerDestination.setMap(map);
+        newMarkers.push(markerDestination);
+        
+        setMarkers(newMarkers)
+        setPolylines(newPolylines);
+        map.fitBounds(bounds);
+      }
+
+    } catch (e) { 
+      alert(UNABLE_TO_GET_ROUTER_MESSAGE);
+      console.log(e);
+    }      
   }
 
   // capture maps objects as soon as the map loads
@@ -216,7 +255,6 @@ export function TruckPage() {
     const newDestinations = destinations;
     newDestinations[index] = event.target.value;
     setDestinations(newDestinations);
-    console.log(newDestinations)
   }
 
   return (
@@ -228,86 +266,52 @@ export function TruckPage() {
         <br />
         <form>
           {/* Departure warehouse selection checkbox and selected warehouse items */}
-          <h1>Truck</h1>
+          <h1>Departure Warehouse</h1>
           <div className={style.outterContainer}>
-            <div className={style.leftColumn}>
-              <div className={style.truckControls}>
-                <label>Select departure warehouse
-                  <select value={selectedWarehouse} onChange={selectedWarehouseChange}>
-                    <option value={WAREHOUSE_OPTION_PLACEHOLDER}>{WAREHOUSE_OPTION_PLACEHOLDER}</option>
-                    { locations.map(x => <option key={x} value={x}>{x}</option>) }
-                  </select>
-                </label>
-              </div>
-              <hr style={{width:'100%', visibility: 'hidden'}}/> { /* css-fix, force flex break */}
-              {
-                /* Warehouse selection checkbox and selected warehouse items */
-                (selectedWarehouse == WAREHOUSE_OPTION_PLACEHOLDER)
-                  ? <div className={style.instructionMessage}>Select a warehouse location from above to display its items here.</div>
-                  : ( (warehouseItems.length == 0)
-                      ? <div className={style.instructionMessage}>Selected warehouse has no items in stock.</div>
-                      : (
-                          <table className={style.warehouseItemsTable}>
-                            <tbody>
-                              {warehouseItems.map(x =>
-                                <tr key={x.id}>
-                                  <td><b>#{x.id}</b>&nbsp;{x.description}</td>
-                                  <td style={{width:'10px'}}>
-                                    <button onClick={(event) => addToTruck(event, x)}>&gt;&gt;</button>
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        )
-                    )
-              }
+            <div className={style.truckControls}>
+              <label>Select departure warehouse
+                <select value={selectedWarehouse} onChange={selectedWarehouseChange}>
+                  <option value={WAREHOUSE_OPTION_PLACEHOLDER}>{WAREHOUSE_OPTION_PLACEHOLDER}</option>
+                  { locations.map(x => <option key={x} value={x}>{x}</option>) }
+                </select>
+              </label>
             </div>
-            { /* control for clearing truck and advance to select destinations */}
-            <div className={style.rightColumn}>
-              { (truckItems.length > 0)  &&
-                <div className={style.truckControls}>
-                  <label style={{float: 'left'}}>
-                    <button onClick={clearTruckClick}>Clear truck</button>
-                  </label>
-                  <label style={{float: 'left'}}>
-                    <button onClick={selectDestinationsClick}>Select destinations</button>
-                  </label>
-                </div>
-              }
-              { /* Item added to the truck*/ }
-              { (truckItems.length == 0)
-                  ? <div className={style.instructionMessage}>Items added to the truck will appear here.</div>
-                  : <table className={style.truckItemsTable}>
-                      <tbody>
-                      { truckItems.map((x) => (
-                        <tr key={x.id}>
-                          <td><b>#{x.id}</b>&nbsp;{x.description}</td>
-                          <td style={{width:'10px'}}>
-                            <button onClick={(event) => removeFromTruck(event, x)}>x</button>
-                          </td>
-                        </tr>
-                      ))}
-                      </tbody>
-                    </table>
-              }
-            </div>
+            {
+              /* Warehouse selection checkbox and selected warehouse items */
+              (selectedWarehouse == WAREHOUSE_OPTION_PLACEHOLDER)
+                ? <div className={style.instructionMessage}>Select a warehouse location from above to display its items here.</div>
+                : ( (warehouseItems.length == 0)
+                    ? <div className={style.instructionMessage}>Selected warehouse has no items in stock.</div>
+                    : (
+                        <table className={style.warehouseItemsTable}>
+                          <tbody>
+                            {warehouseItems.map(x =>
+                              <tr key={x.id}>
+                                <td><b>#{x.id}</b>&nbsp;{x.description}</td>
+                                <td style={{width:'10px'}}>
+                                  <button onClick={(event) => addToTruck(event, x)}>&gt;&gt;</button>
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      )
+                  )
+            }
           </div>
           { /* Select destination for selected items */}
-          <div className={style.outterContainer} style={{display: displaySelectDestination}}>
-            <h1>Select Destinations</h1>
+          <h1>Select Destinations</h1>
+          <div className={style.outterContainer}>
             { /* Control for confirming destination and go back to item selection */ }
-            <div className={style.truckControls} style={{width: '100%', marginLeft:'10px', marginRight: '10px'}}>
-              <label style={{float: 'left'}}>
-                <button onClick={backToItemSeletion}>Back to item selection</button>
-              </label>
-              <label style={{float: 'left'}}>
-                <button onClick={confirmDestinationClick}>Confirm Destinations (Send Truck)</button>
-              </label>
+            <div className={style.truckControls}>
+              <button onClick={clearTruckClick}>Clear truck</button>&nbsp;
+              <button onClick={calculateRouteClick}>Calculate route</button>
             </div>
 
             { /* Destination options */
-              <table className={style.truckItemsTable} style={{marginLeft: '10px', marginRight: '10px'}}>
+              (truckItems.length == 0)
+              ? <div className={style.instructionMessage}>Items added to the truck will appear here.</div>
+              : <table className={style.truckItemsTable}>
               <tbody>
               { truckItems.map((x, index) => (
                 <tr key={x.id}>
@@ -315,8 +319,13 @@ export function TruckPage() {
                   <td style={{ width: '30px'}}>
                     <select onChange={(event) => destinationSelectChange(event, index)}>
                       <option value={WAREHOUSE_OPTION_PLACEHOLDER}>{WAREHOUSE_OPTION_PLACEHOLDER}</option>
-                      { locations.map(x => <option key={x} value={x}>{x}</option>) }
+                      { locations
+                          .filter(x => x != selectedWarehouse)
+                          .map(x => <option key={x} value={x}>{x}</option>) }
                     </select>
+                  </td>
+                  <td className={style.buttonCell}>
+                    <button onClick={(event) => removeFromTruck(event, x)}>x</button>
                   </td>
                 </tr>
               ))}
@@ -324,7 +333,7 @@ export function TruckPage() {
             </table> }
           </div>
           { /* google maps interface and route displaying */}
-          {/* <div className={style.outterContainer} style={{display: displayMap}}> */}
+          <h1>Route Visualization (round trip)</h1>
           <div className={style.outterContainer} >
             <div style={{ height: '400px', width: '100', borderTop: '1px solid black' }}>
               <GoogleMapReact
@@ -334,7 +343,8 @@ export function TruckPage() {
                 defaultZoom={5}
                 zoom={5}
                 onGoogleApiLoaded={({ map, maps }) => handleApiLoaded(map, maps)} > 
-                { /* Can put react components here. They'll appear over the map, ex.
+                { /* Can render react components here. They'll appear over the map at
+                the desired coordinate, ex.
                 <AnyReactComponent lat={59.955413} lng={30.337844} text="My Marker" /> */}
               </GoogleMapReact>
             </div>

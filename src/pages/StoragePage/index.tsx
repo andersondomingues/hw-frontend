@@ -12,8 +12,6 @@ import { Navigator } from '../../components/Navigator';
 import { FormPage } from '../../components/FormPage';
 import { api } from '../../services/api';
 import { LoadingIcon } from '../../components/LoadingIcon';
-import { StorageItem } from '../../components/StorageItem';
-
 
 interface StorageItemHistoryEntry {
   timestamp: string;
@@ -38,7 +36,7 @@ export function StoragePage() {
 
   const ref = useRef<LoadingBarRef>(null);
 
-
+  // get all items from the storage (no filter, unpagined)
   const getStorageItems = async () => {
     const data = {};
 
@@ -51,6 +49,8 @@ export function StoragePage() {
   };
 
   useEffect(() => {
+
+    // get all warehouse locations
     const getLocations = async () => {
       const data = {};
 
@@ -66,6 +66,7 @@ export function StoragePage() {
     getStorageItems();
   }, []);
 
+  // state change for item insertion
   const itemDescriptionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault();
     setItemDescription(event.target.value)
@@ -76,6 +77,7 @@ export function StoragePage() {
     setSelectedWarehouse(event.target.value);
   }
 
+  // item removal action
   const removeItemClick = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, index: number) => {
     
     event.preventDefault();
@@ -86,17 +88,16 @@ export function StoragePage() {
       const response: Promise<AxiosResponse<any, any>> = api.post('packages/delete', data);
 
       response.then((resolved) => {
-        if(resolved.status == 200) { //succefully deleted
+        if(resolved.status === 200) { //succefully deleted
           getStorageItems();
         } else {
           alert(`Unable to remove item with index ${index} from the storage.`)
         }
-      });
-      
+      }); 
     }
-    
   }
 
+  // insertion action
   const addItemClick = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     event.preventDefault();
  
@@ -112,7 +113,6 @@ export function StoragePage() {
       const response: Promise<AxiosResponse<any, any>> = api.post('packages/insert', data);
       response.then((resolved) => {
         if(resolved.status == 200) { //succefully deleted
-
           try{
             const {id, description} = resolved.data;
             getStorageItems(); 
@@ -136,6 +136,7 @@ export function StoragePage() {
       <FormPage>
         <br />
         <form>
+          { /* upper panel, item insertion*/ }
           <h1>Add New Items</h1>
           <div className={style.truckControls}>
             <label>Item name: 
@@ -152,6 +153,7 @@ export function StoragePage() {
               <button onClick={addItemClick}>Add Item</button>
             </label>
           </div>
+          { /* lower panel, item list and deletion */ }
           <h1>Storage Items</h1>
           <LoadingIcon active={(storageItems.length === 0)} />
           {
